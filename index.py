@@ -35,9 +35,9 @@ VEHICLE_MAKES = [
     "mack", "peterbilt", "volvo trucks", "western star", "freightliner", "isuzu"
 ]
 
-PRODUCT_TITLE_XPATH = '//div[@class="xyamay9 x1pi30zi x18d9i69 x1swvt13"]'
-PRODUCT_PRICE_XPATH = '//div[@class="x1xmf6yo"]'
-PRODUCT_DESCRIPTION_XPATH = '//div[@class="xz9dl7a x4uap5 xsag5q8 xkhd6sd x126k92a"]'
+PRODUCT_TITLE_XPATH = '//div[@aria-hidden="false"]/h1'
+PRODUCT_PRICE_XPATH = '//div[@aria-hidden="false"]/span'
+PRODUCT_DESCRIPTION_XPATH = '//div[@aria-hidden="false"]/span'
 PRODUCT_IMAGE_XPATH = "//img[contains(@alt, 'Product photo of')]"
 
 MILEAGE = "background-position: -21px -63px;"
@@ -358,7 +358,7 @@ class fbm_scraper():
         except:
             product_title = "N/A"
         try:
-            product_price = int(self.browser.find_element(By.XPATH, PRODUCT_PRICE_XPATH).text.replace("$", "").replace(",", "").strip())
+            product_price = int(self.browser.find_elements(By.XPATH, PRODUCT_PRICE_XPATH)[0].text.replace("$", "").replace(",", "").strip())
         except:
             product_price = 0
         try: # Some vehicles may have a short description, no need to click on "See more"
@@ -371,7 +371,8 @@ class fbm_scraper():
         
         
         try: # Some vehicles may have no description
-            publication_description = self.browser.find_element(By.XPATH, PRODUCT_DESCRIPTION_XPATH).text
+            publication_description = self.browser.find_elements(By.XPATH, PRODUCT_DESCRIPTION_XPATH)
+            publication_description = publication_description[-1].text
         except:
             publication_description = "N/A"
 
@@ -458,6 +459,8 @@ if __name__ == "__main__":
         else:
             worker = fbm_scraper(city_code, profile, proxy, threshold, headless)
 
+        
+
         worker.execute_scrap_process()
 
         for product_id, link in worker.links.items():
@@ -470,6 +473,6 @@ if __name__ == "__main__":
                 bs = BeautifulSoup(source.text, "lxml")
                 for script in bs.find_all("script"):
                     script.decompose()
-                with open(f"{dir_path}/publications/{product_id}.html", "w") as f:
+                with open(f"{dir_path}/publications/{product_id}.html", "w", encoding="utf-8") as f:
                     f.write(str(bs))
             time.sleep(0.5)
