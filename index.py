@@ -75,7 +75,7 @@ class fbm_scraper():
         options.add_argument("--incognito")
 
         """
-
+        self.met_threshold = False
         self.browser = Driver(browser="chrome", user_data_dir=f"./profiles/{profile}", window_size="1440,900", block_images=True,headed=True, proxy=proxy, agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36")
 
         self.checkpoint = [x.replace(".json", "") for x in os.listdir(f"{dir_path}/publications/")]
@@ -102,12 +102,20 @@ class fbm_scraper():
         self.human_key_input(email_input, email)
         self.human_key_input(password_input, password)
         password_input.send_keys(Keys.RETURN)
-        time.sleep(5)
+        time.sleep(10)
         try:
             captcha_prompt = self.browser.find_element(By.XPATH, "//span[contains(text(), 'Enter the characters you see')]")
             captcha = True
         except:
             captcha = False
+
+        try:
+            #Logic: If there's a .com text within the main body, it means we're being prompted with two steps verification
+            two_steps_prompt = self.browser.find_element(By.XPATH, "//*[contains(text(), '.com')]")
+            input("WARNING: TWO STEPS VERIFICATION DETECTED - Input the code and press enter to continue with the process")
+        except:
+            two_steps_prompt = None
+
         return captcha
     
     def change_language(self):
@@ -136,7 +144,6 @@ class fbm_scraper():
                 continue
             self.links[product_id] = element.get_attribute('href')
             if len(self.links) >= self.threshold:
-                print(f"INFO: Threshold of {self.threshold} met.")
                 break
 
     def human_key_input(self, element, text):
@@ -165,6 +172,7 @@ class fbm_scraper():
                 try:
                     self.scrap_links()
                 except:
+                    
                     print("WARNING: No more links found or the page has changed during the scroll process.")
                     return
 
