@@ -129,13 +129,15 @@ class fbm_scraper():
         self.human_scroll()
 
     def scrap_links(self):
-        elements = self.browser.find_elements(By.XPATH, '//div[@class="x3ct3a4"]')
+        elements = self.browser.find_elements(By.XPATH, "//a[contains(@href, '/marketplace/item')]")
         for element in elements:
-            product_href = element.find_element(By.XPATH, 'a')
-            product_id = product_href.get_attribute('href').split("/")[5]
+            product_id = element.get_attribute('href').split("/")[5]
             if product_id in self.checkpoint:
                 continue
-            self.links[product_id] = product_href.get_attribute('href')
+            self.links[product_id] = element.get_attribute('href')
+            if len(self.links) >= self.threshold:
+                print(f"INFO: Threshold of {self.threshold} met.")
+                break
 
     def human_key_input(self, element, text):
         for char in text:
@@ -158,8 +160,6 @@ class fbm_scraper():
             
             if len(recorded_heights) > 5 and all(recorded_heights[-i] == recorded_heights[-i-1] for i in range(1, min(len(recorded_heights), 5))):
                 print(f"INFO: No more items to load, starting the scrap of {len(self.links)} items.")
-                break
-            if len(self.links) >= self.threshold:
                 break
             else:
                 try:
@@ -464,7 +464,6 @@ if __name__ == "__main__":
         worker.execute_scrap_process()
 
         for product_id, link in worker.links.items():
-            
             publication = worker.scrap_link(link)    
             with open(f"{dir_path}/publications/{product_id}.json", "w") as f:
                 json.dump(publication, f, indent=4)
