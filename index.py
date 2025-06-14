@@ -2,6 +2,7 @@
 # Date: April 2025
 
 
+from ast import While
 from bs4 import BeautifulSoup
 from seleniumbase import Driver
 from selenium.webdriver.common.by import By
@@ -113,6 +114,10 @@ class fbm_scraper():
             #Logic: If there's a .com text within the main body, it means we're being prompted with two steps verification
             two_steps_prompt = self.browser.find_element(By.XPATH, "//*[contains(text(), '.com')]")
             input("WARNING: TWO STEPS VERIFICATION DETECTED - Input the code and press enter to continue with the process")
+            current_time_ts = round(time.time())
+            human_readable_time = datetime.datetime.utcfromtimestamp(current_time_ts).strftime('%Y-%m-%d %H:%M:%S')
+            with open("errors.log", "a") as f:
+                f.write(f"[{human_readable_time}] WARNING: {email} was prompted with Two-Step Verification.")
         except:
             two_steps_prompt = None
 
@@ -139,12 +144,13 @@ class fbm_scraper():
     def scrap_links(self):
         elements = self.browser.find_elements(By.XPATH, "//a[contains(@href, '/marketplace/item')]")
         for element in elements:
+            if len(self.links) >= self.threshold:
+                break
             product_id = element.get_attribute('href').split("/")[5]
             if product_id in self.checkpoint:
                 continue
             self.links[product_id] = element.get_attribute('href')
-            if len(self.links) >= self.threshold:
-                break
+            
 
     def human_key_input(self, element, text):
         for char in text:
@@ -172,7 +178,6 @@ class fbm_scraper():
                 try:
                     self.scrap_links()
                 except:
-                    
                     print("WARNING: No more links found or the page has changed during the scroll process.")
                     return
 
@@ -428,60 +433,66 @@ class fbm_scraper():
         pass
 
 if __name__ == "__main__":
-
     headless = True
     save_html = True
-    
+    while True:
+        with open(f"{dir_path}/input.csv", "r") as f:
+            reader = csv.reader(f)
+            lines = list(reader)
 
+        if not os.path.exists(f"{dir_path}/publications"):
+            os.makedirs(f"{dir_path}/publications")
 
-    with open(f"{dir_path}/input.csv", "r") as f:
-        reader = csv.reader(f)
-        lines = list(reader)
+        if not os.path.exists(f"{dir_path}/images"):
+            os.makedirs(f"{dir_path}/images")  
 
-    if not os.path.exists(f"{dir_path}/publications"):
-        os.makedirs(f"{dir_path}/publications")
-
-    if not os.path.exists(f"{dir_path}/images"):
-        os.makedirs(f"{dir_path}/images")  
-
-    for line in lines:
-        print(line)
-        email, password, city_code, threshold, proxy, change_language = line
-        
-        threshold = int(threshold.strip())
-        city_code = city_code.strip()
-        email = email.strip()
-        profile = email.split("@")[0]
-        change_language = bool(change_language.capitalize())
-        
-        if not os.path.exists(f"{dir_path}/profiles/{profile}"):
-            worker = fbm_scraper(city_code, profile, proxy, threshold, headless)
-            print(f"INFO: Profile {profile} not logged, attempting a log in.")
+        count = 1
+        for line in lines:
+            print(line)
+            try:
+                email, password, city_code, threshold, proxy, change_language = line
+            except:
+                current_time_ts = round(time.time())
+                human_readable_time = datetime.datetime.utcfromtimestamp(current_time_ts).strftime('%Y-%m-%d %H:%M:%S')
+                with open("errors.log", "a") as f:
+                    f.write(f"[{human_readable_time}] ERROR: Could not get any data from input.csv in line {count}.")
+                count += 1
+                continue  
+            count += 1
+            threshold = int(threshold.strip())
+            city_code = city_code.strip()
+            email = email.strip()
+            profile = email.split("@")[0]
+            change_language = bool(change_language.capitalize())
             
-            captcha = worker.log_in(email, password)
-            if change_language:
-                worker.change_language()
-            if captcha:
-                input(f"WARNING: Captcha detected for profile {profile}. Terminating.")
-                sys.exit(0)
-        else:
-            worker = fbm_scraper(city_code, profile, proxy, threshold, headless)
-
-        
-
-        worker.execute_scrap_process()
-
-        for product_id, link in worker.links.items():
-            publication = worker.scrap_link(link)    
-            with open(f"{dir_path}/publications/{product_id}.json", "w") as f:
-                json.dump(publication, f, indent=4)
-            if save_html:
+            if not os.path.exists(f"{dir_path}/profiles/{profile}"):
+                worker = fbm_scraper(city_code, profile, proxy, threshold, headless)
+                print(f"INFO: Profile {profile} not logged, attempting a log in.")
                 
-                source = worker.browser.find_element(By.TAG_NAME, 'body')
-                bs = BeautifulSoup(source.text, "lxml")
-                for script in bs.find_all("script"):
-                    script.decompose()
-                with open(f"{dir_path}/publications/{product_id}.html", "w", encoding="utf-8") as f:
-                    f.write(str(bs))
-            time.sleep(0.5)
-        worker.browser.quit()
+                captcha = worker.log_in(email, password)
+                if change_language:
+                    worker.change_language()
+                if captcha:
+                    input(f"WARNING: Captcha detected for profile {profile}. Terminating.")
+                    sys.exit(0)
+            else:
+                worker = fbm_scraper(city_code, profile, proxy, threshold, headless)
+
+            
+
+            worker.execute_scrap_process()
+
+            for product_id, link in worker.links.items():
+                publication = worker.scrap_link(link)    
+                with open(f"{dir_path}/publications/{product_id}.json", "w") as f:
+                    json.dump(publication, f, indent=4)
+                if save_html:
+                    
+                    source = worker.browser.find_element(By.TAG_NAME, 'body')
+                    bs = BeautifulSoup(source.text, "lxml")
+                    for script in bs.find_all("script"):
+                        script.decompose()
+                    with open(f"{dir_path}/publications/{product_id}.html", "w", encoding="utf-8") as f:
+                        f.write(str(bs))
+                time.sleep(0.5)
+            worker.browser.quit()
