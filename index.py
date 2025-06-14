@@ -117,7 +117,7 @@ class fbm_scraper():
             current_time_ts = round(time.time())
             human_readable_time = datetime.datetime.utcfromtimestamp(current_time_ts).strftime('%Y-%m-%d %H:%M:%S')
             with open("errors.log", "a") as f:
-                f.write(f"[{human_readable_time}] WARNING: {email} was prompted with Two-Step Verification.")
+                f.write(f"[{human_readable_time}] WARNING: {email} was prompted with Two-Step Verification.\n")
         except:
             two_steps_prompt = None
 
@@ -455,7 +455,7 @@ if __name__ == "__main__":
                 current_time_ts = round(time.time())
                 human_readable_time = datetime.datetime.utcfromtimestamp(current_time_ts).strftime('%Y-%m-%d %H:%M:%S')
                 with open("errors.log", "a") as f:
-                    f.write(f"[{human_readable_time}] ERROR: Could not get any data from input.csv in line {count}.")
+                    f.write(f"[{human_readable_time}] ERROR: Could not get any data from input.csv in line {count}.\n")
                 count += 1
                 continue  
             count += 1
