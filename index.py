@@ -464,6 +464,7 @@ if __name__ == "__main__":
         worker.execute_scrap_process()
 
         for product_id, link in worker.links.items():
+            
             publication = worker.scrap_link(link)    
             with open(f"{dir_path}/publications/{product_id}.json", "w") as f:
                 json.dump(publication, f, indent=4)
@@ -476,3 +477,4 @@ if __name__ == "__main__":
                 with open(f"{dir_path}/publications/{product_id}.html", "w", encoding="utf-8") as f:
                     f.write(str(bs))
             time.sleep(0.5)
+        worker.browser.quit()
